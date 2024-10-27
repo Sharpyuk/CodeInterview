@@ -16,6 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@/hooks/*": ["./src/app/hooks/*"],
+      "@/components/dataDisplay/*": ["./src/app/components/dataDisplay/*"],
       "~/*": ["./public/*"]
     },
     "incremental": true,
