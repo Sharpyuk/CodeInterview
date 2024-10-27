@@ -77,7 +77,16 @@ func main() {
 			asset_id INTEGER,
 			port INTEGER NOT NULL,
 			FOREIGN KEY(asset_id) REFERENCES assets(id)
-		);`
+		);
+
+		CREATE INDEX idx_assets_host ON assets(host);
+		CREATE INDEX idx_ips_asset_id ON ips(asset_id);
+		CREATE INDEX idx_ports_asset_id ON ports(asset_id);
+		`
+	//	Added Indexes to ensure data read is faster
+	//    create index idx_assets_host ON assets(host)       - Indexes host
+	//    create index idx_ips_asset_id ON ips(asset_id)     - Index foriegn key for asset_id
+	//    create index idx_ports_asset_id ON ports(asset_id) - Index foriegn key for asset_id
 
 	_, err = db.Exec(createTablesSQL)
 	if err != nil {

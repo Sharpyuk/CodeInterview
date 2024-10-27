@@ -3,6 +3,7 @@ module interview
 go 1.22.2
 
 require (
+	github.com/bvinc/go-sqlite-lite v0.6.1
 	github.com/bxcodec/faker/v3 v3.8.1
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
