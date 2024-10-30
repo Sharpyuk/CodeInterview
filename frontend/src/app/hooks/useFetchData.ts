@@ -22,10 +22,22 @@ export function useFetchData(initialFilter: string, isGridView: boolean, pageSiz
       setIsLoading(true);
       try {
         const response = await fetch(
-          `http://localhost:8080/assets?filter=${filter}&maxAssets=${pageSize}&assetOffset=${assetOffset}`
+          `http://localhost:8080/assets?filter=${filter}&maxAssets=1000&assetOffset=${assetOffset}`
         );
         const result = await response.json();
-        setData(prevData => isGridView ? [...prevData, ...result.assets || []] : result.assets);
+        //setData(prevData => isGridView ? [...prevData, ...result.assets || []] : result.assets);
+        setData(prevData => {
+            if (!prevData) {return result.assets}
+            
+            // Map over current data IDs for quick lookup
+            const existingIds = new Set(prevData.map(item => item.ID)); // Adjust to your unique key
+          
+            // Filter out items already in prevData
+            const newData = (result.assets || []).filter(item => !existingIds.has(item.ID)); 
+          
+            return isGridView ? [...prevData, ...newData] : result.assets;
+        });
+
         setTotalPages(result.total_pages || 1);
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -33,7 +45,6 @@ export function useFetchData(initialFilter: string, isGridView: boolean, pageSiz
         setIsLoading(false);
       }
     };
-    //setData([]);
     fetchData();
   }, [filter, pageNumber, isGridView, pageSize]);
 

@@ -33,6 +33,7 @@ export default function HomePage() {
     setPageNumber(newPage);
   }, [setPageNumber]);
 
+  
   return (
     <main className={`bg-gray-50 ${isGridView ? 'h-screen overflow-hidden':''}`}>
       <Header

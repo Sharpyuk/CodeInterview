@@ -59,14 +59,19 @@ func SetupDatabase(filename string) *sql.DB {
 	return db
 }
 
-// CountTotalAssets - Count number of assets based on optional host filter
-func CountTotalAssets(db *sql.DB, filterHost string) (int, error) {
+// CountTotalAssets - Count number of assets based on optional host/assetId filter
+func CountTotalAssets(db *sql.DB, filterHost, assetId string) (int, error) {
 	var count int
 	var err error
+	var arg any
 
 	sqlStmt := "SELECT COUNT(*) FROM assets"
 	if filterHost != "" {
 		sqlStmt += " WHERE host LIKE ?"
+		arg = "%" + filterHost + "%" 
+	} else if assetId != "" {
+		sqlStmt += " WHERE id LIKE ?"
+		arg = assetId
 	}
 
 	// Prepare the statement
@@ -77,9 +82,9 @@ func CountTotalAssets(db *sql.DB, filterHost string) (int, error) {
 	defer stmt.Close()
 
 	// Bind the filter host if provided
-	if filterHost != "" {
-		filterHost = "%" + filterHost + "%" // Use LIKE with wildcards
-		err = stmt.QueryRow(filterHost).Scan(&count)
+	if filterHost != "" || assetId != "" {
+		
+		err = stmt.QueryRow(arg).Scan(&count)
 	} else {
 		err = stmt.QueryRow().Scan(&count)
 	}
@@ -87,9 +92,9 @@ func CountTotalAssets(db *sql.DB, filterHost string) (int, error) {
 	return count, err
 }
 
-func QueryAssets(db *sql.DB, assetId, filterHost, maxAssets, assetOffset string) ([]models.Asset, int, error) {
+func QueryAssets(db *sql.DB, assetId, filterHost string, maxAssets, assetOffset int) ([]models.Asset, int, error) {
 
-	totalCount, err := CountTotalAssets(db, filterHost)
+	totalCount, err := CountTotalAssets(db, filterHost, assetId)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -100,29 +105,31 @@ func QueryAssets(db *sql.DB, assetId, filterHost, maxAssets, assetOffset string)
 	if assetId != "" {
 		filter = " WHERE assets.id = ? "
 		args = append(args, assetId)
-	} else if filterHost  != "" {
+	} else if filterHost != "" {
 		filter = " WHERE assets.host LIKE ? "
-		args = append(args, filterHost)
+		args = append(args, "%"+filterHost+"%")
 	}
 
 	// Prepare Limit and Offset for paginated results.
 	limit := ""
-	if maxAssets != "" && assetOffset != "" {
+	if maxAssets > 0 && assetOffset >= 0 {
 		limit = " LIMIT ? OFFSET ? "
-		args = append(args, maxAssets, assetOffset )
+		args = append(args, maxAssets, assetOffset)
 	}
 
-	// Prepare the main asset query
+	// Prepare the main asset query.  This query uses joins to prevent multiple database lookups.
+	//  preparing the statement will prevent sql injection attacks.
 	query := `
 	SELECT a.id, a.host, a.comment, a.owner, i.address, p.port
 	FROM (
 		SELECT assets.id id, assets.host, assets.comment, assets.owner
 		FROM assets
-	` + filter + limit + `) a
+	` + filter + ` ORDER BY assets.host ASC ` + limit + `) a
 	LEFT JOIN 
 		ips i ON a.id = i.asset_id
 	LEFT JOIN 
 		ports p ON a.id = p.asset_id
+	ORDER BY a.host ASC 
 	`
 
 	sqlStmt, err := db.Prepare(query)
@@ -144,13 +151,6 @@ func QueryAssets(db *sql.DB, assetId, filterHost, maxAssets, assetOffset string)
 
 	// Iterate the rows
 	for rows.Next() {
-		// hasRow, err := sqlStmt.Step()
-		// if err != nil {
-		// 	return nil, 0, err
-		// }
-		// if !hasRow {
-		// 	break
-		// }
 
 		var id int
 		var host, comment, owner, ip_address string

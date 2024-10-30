@@ -17,7 +17,7 @@ func main() {
 
 	router.Use(middleware.CORSConfig())
 
-	router.GET("/assets", handlers.QueryAssets(db))
+	router.GET("/assets", handlers.GetAssets(db))
 	
 	router.Run(":8080")
 }
